@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calculadora de Residuos de Plaguicidas (Prototipo)</title>
+  <style>
+    :root{
+      --bg:#0b1324; --panel:#111a33; --muted:#7b8ab8; --text:#e8edff; --accent:#6aa6ff; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial; background:linear-gradient(180deg,#0b1324,#0b1324 40%,#0a0f1f); color:var(--text)}
+    header{padding:24px 20px; border-bottom:1px solid #1c2646; position:sticky; top:0; background:#0b1324cc; backdrop-filter: blur(6px)}
+    header h1{margin:0; font-size:20px}
+    .wrap{max-width:1100px; margin:0 auto; padding:24px 20px 60px}
+    .grid{display:grid; grid-template-columns:1fr; gap:16px}
+    @media (min-width:900px){ .grid{grid-template-columns: 1.1fr 0.9fr} }
+    .card{background:var(--panel); border:1px solid #1c2646; border-radius:18px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,.2)}
+    .card h2{margin:0 0 12px; font-size:16px}
+    .row{display:grid; grid-template-columns: repeat(12,1fr); gap:12px; margin-bottom:12px}
+    .row .col{grid-column: span 12}
+    @media (min-width:700px){ .row .col-6{grid-column: span 6} .row .col-4{grid-column: span 4} .row .col-3{grid-column: span 3} }
+    label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
+    input, select{width:100%; padding:12px 12px; background:#0c1530; border:1px solid #27345e; color:var(--text); border-radius:12px; outline:none}
+    input:focus, select:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(106,166,255,.15)}
+    .btn{display:inline-flex; align-items:center; gap:10px; padding:12px 16px; border-radius:12px; background:var(--accent); color:#07122a; border:none; font-weight:600; cursor:pointer}
+    .btn-ghost{background:transparent; border:1px solid #2b3a6e; color:var(--text)}
+    .badge{display:inline-block; padding:4px 8px; border-radius:999px; font-size:11px; border:1px solid #2b3a6e; color:var(--muted)}
+    .kpi{display:flex; align-items:baseline; gap:12px; margin:10px 0 2px}
+    .kpi .value{font-size:40px; font-weight:800}
+    .kpi .unit{font-size:14px; color:var(--muted)}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+    details{margin-top:10px}
+    .range{font-size:12px; color:var(--muted)}
+    .footer{margin-top:16px; font-size:12px; color:var(--muted)}
+    .pill{padding:2px 8px; border-radius:999px; background:#0c1530; border:1px solid #27345e}
+    .small{font-size:12px}
+    .out{margin-top:12px; background:#0c1530; border:1px dashed #2b3a6e; padding:14px; border-radius:12px}
+    .table{width:100%; border-collapse:collapse; font-size:12px; margin-top:8px}
+    .table th,.table td{padding:8px; border-bottom:1px solid #1c2646}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Calculadora de Residuos de Plaguicidas <span class="badge">Prototipo • Modelo v0.3</span></h1>
+      <div class="small" style="margin-top:6px; color:#9fb0ff">Modelo creado por <b>Mathias E. Barboza‑Moreno</b>, <b>Colegio Ingeniería‑Trujillo</b>, en base a una calculadora científica.</div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="grid">
+      <section class="card" aria-labelledby="inputsTitle">
+        <h2 id="inputsTitle">Entradas mínimas</h2>
+        <form id="form">
+          <div class="row">
+            <div class="col col-6">
+              <label for="vegetable">Vegetal</label>
+              <select id="vegetable" required>
+                <option>Tomate</option>
+                <option>Pepino</option>
+                <option>Espinaca</option>
+                <option>Lechuga</option>
+                <option>Papa</option>
+                <option>Zanahoria</option>
+                <option>Manzana</option>
+              </select>
+            </div>
+            <div class="col col-6">
+              <label for="pesticide">Pesticida</label>
+              <select id="pesticide" required>
+                <option>Malatión</option>
+                <option>Dimetoato</option>
+                <option>Clorpirifós</option>
+                <option>Paratión metílico</option>
+                <option>Carbaril</option>
+              </select>
+            </div>
+            <div class="col col-6">
+              <label for="surface_pH">pH superficial</label>
+              <input id="surface_pH" type="number" step="0.01" min="4.5" max="9.0" value="6.50" required />
+              <div class="range">rango entrenado: ~5.0–8.5</div>
+            </div>
+            <div class="col col-6" style="display:flex; align-items:flex-end; gap:12px;">
+              <button class="btn" type="submit">Calcular</button>
+              <button class="btn btn-ghost" type="button" id="resetBtn">Restablecer</button>
+            </div>
+          </div>
+        </form>
+        <div class="out small">
+          Todos los demás parámetros se encuentran <b>normalizados</b> a condiciones estándar: tiempo=120 min, temperatura=22 °C, pH del vehículo=7.0, humedad=55%, concentración nominal=100 ppm. El índice de ceras se fija automáticamente según el vegetal.
+        </div>
+        <details>
+          <summary>Mostrar parámetros y supuestos del modelo</summary>
+          <div class="out" id="modelMeta"></div>
+        </details>
+      </section>
+
+      <aside class="card" aria-labelledby="outputsTitle">
+        <h2 id="outputsTitle">Resultado</h2>
+        <div class="kpi">
+          <div class="value" id="predValue">—</div>
+          <div class="unit">% de residuo estimado</div>
+        </div>
+        <div class="out" id="diagnostics">Ingrese el pH superficial y presione <b>Calcular</b>.</div>
+        <table class="table" id="echoTable" aria-label="Entradas echo"></table>
+        <div class="out" id="riskBox">
+          <div><b>Residuo estimado:</b> <span id="mgkg">—</span> mg/kg</div>
+          <div><b>MRL (límite legal):</b> <span id="mrl">—</span> mg/kg</div>
+          <div><b>Clasificación:</b> <span id="riskLabel">—</span></div>
+        </div>
+        <div class="footer">
+          <div><span class="pill">Advertencia</span> El MRL es un criterio legal de conformidad, no un umbral toxicológico. Valores de MRL aquí son ilustrativos y deben actualizarse con fuentes oficiales.</div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="card" aria-labelledby="techTitle" style="margin-top:16px">
+      <h2 id="techTitle">Notas técnicas</h2>
+      <p class="small">Ecuación de media (enlace logit) de una Beta‑regresión:
+        <code>logit(μ)=β0+αveg+γpest+β1·pHc+β2·pHc²+β3·log(t+1)+β4·Tempc+β5·Wax+β6·Humc+β7·H2Oc+β8·(pHc·log(t+1))+β9·Conc</code>.
+        Predicción <code>%=100·μ</code>. Este prototipo usa coeficientes iniciales derivados de simulación; sustitúyalos por los estimados con datos reales.</p>
+    </section>
+  </div>
+
+  <script>
+    // ===== Coeficientes del prototipo (ajustados para mayor sensibilidad al pH) =====
+    const COEF = {
+      beta0: -2.3,           // baja línea base
+      beta_pH: 0.00,         // pico centrado sin sesgo lineal
+      beta_pH2: -0.75,       // concavidad marcada: máximo en pH 6.5
+      beta_logt: -0.35,      // degradación moderada con el tiempo (120 min fijo)
+      beta_temp: -0.05,
+      beta_wax: 0.30,
+      beta_hum: 0.00,
+      beta_water_pH: -0.04,
+      beta_pH_logt: -0.10,
+      beta_nominal: 0.006,   // eleva % para que cruce MRL en pH ~ neutro
+      veg_intercepts: { 
+        'Tomate': 0.05,
+        'Pepino': 0.20,
+        'Espinaca': -0.10,
+        'Lechuga': -0.05,
+        'Papa': -0.08,
+        'Zanahoria': -0.06,
+        'Manzana': 0.15
+      },
+      pest_intercepts: { 
+        'Malatión': -0.05,
+        'Dimetoato': 0.10,
+        'Clorpirifós': 0.20,
+        'Paratión metílico': 0.25,
+        'Carbaril': 0.05
+      }
+    };
+
+    // Medias de ceras por vegetal (0–2)
+    const WAX_MEAN = {
+      'Tomate': 1.2,
+      'Pepino': 1.8,
+      'Espinaca': 0.4,
+      'Lechuga': 0.5,
+      'Papa': 0.3,
+      'Zanahoria': 0.2,
+      'Manzana': 1.6
+    };
+
+    // Rango de entrenamiento (para alertas)
+    const TRAIN_RANGES = { pH:[5.0,8.5] };
+
+    // Valores normalizados (no editables en UI)
+    const NORMAL = { time_min:120, temp_C:22, water_pH:7.0, humidity_pct:55, conc_ppm:100 };
+
+    function invLogit(x){ return 1/(1+Math.exp(-x)); }
+
+    function predictMinimal(form) {
+      const veg = form.vegetable.value;
+      const pest = form.pesticide.value;
+      const surface_pH = parseFloat(form.surface_pH.value);
+
+      // Centrados/transformaciones con parámetros normalizados
+      const pHc = surface_pH - 6.5;
+      const logt = Math.log(NORMAL.time_min + 1.0);
+      const tempc = (NORMAL.temp_C - 22.0) / 10.0; // = 0
+      const water_pH_c = NORMAL.water_pH - 7.0; // = 0
+      const humc = (NORMAL.humidity_pct - 55.0) / 10.0; // = 0
+      const wax = WAX_MEAN[veg] ?? 1.0;
+
+      const eta = (
+        COEF.beta0
+        + (COEF.veg_intercepts[veg] || 0)
+        + (COEF.pest_intercepts[pest] || 0)
+        + COEF.beta_pH * pHc
+        + COEF.beta_pH2 * (pHc ** 2)
+        + COEF.beta_logt * logt
+        + COEF.beta_temp * tempc
+        + COEF.beta_wax * wax
+        + COEF.beta_hum * humc
+        + COEF.beta_water_pH * water_pH_c
+        + COEF.beta_pH_logt * (pHc * logt)
+        + COEF.beta_nominal * NORMAL.conc_ppm
+      );
+
+      let mu = invLogit(eta);
+      mu = Math.max(1e-4, Math.min(1-1e-4, mu));
+      const pct = 100 * mu;
+
+      // Comprobación de extrapolación (solo pH)
+      const flags = [];
+      if(surface_pH < TRAIN_RANGES.pH[0] || surface_pH > TRAIN_RANGES.pH[1]){ flags.push('pH superficial'); }
+
+      return {pct, flags, inputs:{veg,pest,surface_pH, ...NORMAL, wax}};
+    }
+
+    function renderEcho(table, inputs){
+      const rows = [
+        ['Vegetal', inputs.veg],
+        ['Pesticida', inputs.pest],
+        ['pH superficial', inputs.surface_pH],
+        ['Tiempo (min, fijo)', inputs.time_min],
+        ['Temperatura (°C, fija)', inputs.temp_C],
+        ['pH del vehículo (fijo)', inputs.water_pH],
+        ['Humedad (% , fija)', inputs.humidity_pct],
+        ['Índice de ceras (por vegetal)', inputs.wax.toFixed(2)],
+        ['Conc. nominal (ppm, fija)', inputs.conc_ppm]
+      ];
+      table.innerHTML = '<tr><th>Variable</th><th>Valor</th></tr>' + rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+    }
+
+    function updateMeta(){
+      const metaDiv = document.getElementById('modelMeta');
+      metaDiv.innerHTML = `
+        <div class="small">
+          <div><b>Interceptos (vegetal)</b>: ${Object.entries(COEF.veg_intercepts).map(([k,v])=>`${k} ${v}`).join(', ')}</div>
+          <div><b>Interceptos (pesticida)</b>: ${Object.entries(COEF.pest_intercepts).map(([k,v])=>`${k} ${v}`).join(', ')}</div>
+          <div><b>Coeficientes</b>: β0 ${COEF.beta0}, βpH ${COEF.beta_pH}, βpH² ${COEF.beta_pH2}, βlogt ${COEF.beta_logt}, βTemp ${COEF.beta_temp}, βWax ${COEF.beta_wax}, βHum ${COEF.beta_hum}, βH2O ${COEF.beta_water_pH}, βpH×logt ${COEF.beta_pH_logt}, βConc ${COEF.beta_nominal}</div>
+          <div class="muted">Sustituya estos valores por los coeficientes estimados al entrenar el modelo con datos reales.</div>
+        </div>`;
+    }
+
+    document.getElementById('form').addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const {pct, flags, inputs} = predictMinimal(e.target);
+      document.getElementById('predValue').textContent = pct.toFixed(1);
+
+      const diag = document.getElementById('diagnostics');
+      if(flags.length){
+        diag.innerHTML = `<span class="warn">Extrapolación:</span> Fuera del rango entrenado: <b>${flags.join(', ')}</b>. Interprete con cautela.`;
+      } else {
+        diag.innerHTML = `<span class="ok">OK:</span> Variables dentro del rango entrenado o normalizadas.`;
+      }
+      renderEcho(document.getElementById('echoTable'), inputs);
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', ()=>{
+      document.getElementById('form').reset();
+      document.getElementById('predValue').textContent = '—';
+      document.getElementById('diagnostics').textContent = 'Ingrese el pH superficial y presione Calcular.';
+      document.getElementById('echoTable').innerHTML='';
+    });
+
+    updateMeta();
+    // ===== Tabla MRL (mg/kg) DEMO: reemplace con valores oficiales =====
+    const MRL = {
+      'Tomate': { 'Malatión': 0.5, 'Dimetoato': 1.0, 'Clorpirifós': 0.5, 'Paratión metílico': 0.05, 'Carbaril': 0.5 },
+      'Pepino': { 'Malatión': 1.0, 'Dimetoato': 1.0, 'Clorpirifós': 0.3, 'Paratión metílico': 0.05, 'Carbaril': 1.0 },
+      'Espinaca': { 'Malatión': 2.0, 'Dimetoato': 1.0, 'Clorpirifós': 0.7, 'Paratión metílico': 0.05, 'Carbaril': 2.0 },
+      'Lechuga': { 'Malatión': 2.0, 'Dimetoato': 1.0, 'Clorpirifós': 2.0, 'Paratión metílico': 0.05, 'Carbaril': 5.0 },
+      'Papa': { 'Malatión': 0.05, 'Dimetoato': 0.02, 'Clorpirifós': 0.05, 'Paratión metílico': 0.02, 'Carbaril': 0.2 },
+      'Zanahoria': { 'Malatión': 0.5, 'Dimetoato': 0.2, 'Clorpirifós': 0.2, 'Paratión metílico': 0.05, 'Carbaril': 0.2 },
+      'Manzana': { 'Malatión': 0.5, 'Dimetoato': 0.1, 'Clorpirifós': 0.5, 'Paratión metílico': 0.05, 'Carbaril': 5.0 }
+    };
+
+    function classifyRisk(veg, pest, pct){
+      // nominal 100 ppm -> % == mg/kg
+      const resid = pct; 
+      const mrl = (MRL[veg] && MRL[veg][pest]) ? MRL[veg][pest] : null;
+      let label = '—';
+      if(mrl==null){ label = 'Sin MRL cargado'; }
+      else if(resid <= mrl){ label = 'Cumple MRL'; }
+      else { label = 'Sobrepasa MRL'; }
+      return { resid_mgkg: resid, mrl, label };
+    }
+
+    // (resto del script existente)
+
+    document.getElementById('form').addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const {pct, flags, inputs} = predictMinimal(e.target);
+      document.getElementById('predValue').textContent = pct.toFixed(2);
+
+      const diag = document.getElementById('diagnostics');
+      if(flags.length){
+        diag.innerHTML = `<span class="warn">Extrapolación:</span> Fuera del rango entrenado: <b>${flags.join(', ')}</b>.`;
+      } else {
+        diag.innerHTML = `<span class="ok">OK:</span> Dentro del rango entrenado o normalizado.`;
+      }
+      renderEcho(document.getElementById('echoTable'), inputs);
+
+      // Clasificación de riesgo (MRL)
+      const risk = classifyRisk(inputs.veg, inputs.pest, pct);
+      document.getElementById('mgkg').textContent = risk.resid_mgkg.toFixed(2);
+      document.getElementById('mrl').textContent = risk.mrl!=null ? risk.mrl.toFixed(2) : '—';
+      const riskLabel = document.getElementById('riskLabel');
+      riskLabel.textContent = risk.label;
+      riskLabel.className = '';
+      if(risk.label==='Sobrepasa MRL'){ riskLabel.classList.add('err'); }
+      if(risk.label==='Cumple MRL'){ riskLabel.classList.add('ok'); }
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', ()=>{
+      document.getElementById('form').reset();
+      document.getElementById('predValue').textContent = '—';
+      document.getElementById('diagnostics').textContent = 'Ingrese el pH superficial y presione Calcular.';
+      document.getElementById('echoTable').innerHTML='';
+      document.getElementById('mgkg').textContent='—';
+      document.getElementById('mrl').textContent='—';
+      document.getElementById('riskLabel').textContent='—';
+    });
+
+    updateMeta();
+  </script>
+</body>
+</html>
